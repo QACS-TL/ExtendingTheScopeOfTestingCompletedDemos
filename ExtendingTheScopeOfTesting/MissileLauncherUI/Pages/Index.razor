@@ -1,0 +1,159 @@
+﻿@page "/"
+@using MissileLauncher;
+@using Vidazor
+@using Vidazor.Types
+@inject IJSRuntime JsRuntime;
+
+<PageTitle>Missile Launcher</PageTitle>
+
+<h1>Missile Launcher!</h1>
+
+<p role="status">@controller.State</p>
+<table class="table">
+    <tbody>
+        <tr>
+            <td>
+                <button class="btn btn-primary" id="btnRemoveKey" disabled="@btnReturnKeyIsDisabled" @onclick="onRemoveAKey">Remove a Key</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button class="btn btn-primary" id="btnFirstKey" disabled="@btnFirstKeyIsDisabled" @onclick="onKeyOne">Insert First Key</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button class="btn btn-primary" id="btnSecondKey" disabled="@btnSecondKeyIsDisabled" @onclick="onKeyTwo">Insert Second Key</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+
+                <input class="txt text-danger" type="number" id="txtLaunchCode" @bind="launchCode" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button class="btn btn-primary" id="btnEnterUnlockCode" disabled="@btnEnterUnlockCodeIsDisabled" @onclick="onEnterLaunchCode">Enter Unlock Code</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button class="btn btn-primary" id="btnLaunchCommand" disabled="@btnLaunchCommandIsDisabled" @onclick="onLaunch">Launch Rocket</button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+@code {
+    Controller controller = new Controller();
+    VidazorVideo video;
+    private int currentCount = 0;
+    protected bool btnReturnKeyIsDisabled { get; set; } = true;
+    protected bool btnFirstKeyIsDisabled { get; set; } = false;
+    protected bool btnSecondKeyIsDisabled { get; set; } = true;
+    protected bool btnEnterUnlockCodeIsDisabled { get; set; } = true;
+    protected bool btnLaunchCommandIsDisabled { get; set; } = true;
+    //protected bool vidLaunchIsDisabled { get; set; } = true;
+    protected string launchCode { get; set; }
+
+
+    private void onKeyOne()
+    {
+        //JsRuntime.InvokeVoidAsync("alert", $"BOO1! {controller.State}"); // Alert
+        SetButtonState();
+        controller.InsertKey();
+        SetButtonState();
+    }
+
+    private void onKeyTwo()
+    {
+        controller.InsertKey();
+        SetButtonState();
+    }
+
+    private void onRemoveAKey()
+    {
+        controller.RemoveKey();
+        SetButtonState();
+    }
+
+    private void onEnterLaunchCode()
+    {
+        if (launchCode != null && launchCode.Length == 4)
+        {
+            controller.SubmitUnlockCode(launchCode);
+            SetButtonState();
+            if (controller.State == Controller.ControllerState.WAITING_FOR_UNLOCK_CODE)
+            {
+                // code was invalid
+                JsRuntime.InvokeVoidAsync("alert", "INVALID Launch Code!"); // Alert
+                return;
+            }
+        }
+        else
+        {
+            JsRuntime.InvokeVoidAsync("alert", "Launch Code must be 4 digits!"); // Alert
+        }
+    }
+
+    private void onLaunch()
+    {
+        controller.SubmitLaunchCommand();
+        SetButtonState();
+        controller.ResetController();
+    }
+
+    private void SetButtonState()
+    {
+        //Ensure all switches are disabled
+        btnReturnKeyIsDisabled = true;
+        btnFirstKeyIsDisabled = true;
+        btnSecondKeyIsDisabled = true;
+        btnEnterUnlockCodeIsDisabled = true;
+        btnLaunchCommandIsDisabled = true;
+        //JsRuntime.InvokeVoidAsync("alert", $"BOO2! {controller.State}"); // Alert
+
+        switch ((int)controller.State)
+        {
+            case (int)ControllerState.WAITING_FOR_FIRST_KEY:
+                {
+                    //video.Pause();
+                    video.Load();
+                    //JsRuntime.InvokeVoidAsync("alert", $"BOO3! {controller.State}"); // Alert
+                    btnFirstKeyIsDisabled = false;
+                    break;
+                }
+            case (int)ControllerState.WAITING_FOR_SECOND_KEY:
+                {
+                    btnSecondKeyIsDisabled = false;
+                    btnReturnKeyIsDisabled = false;
+                    break;
+                }
+            case (int)ControllerState.WAITING_FOR_UNLOCK_CODE:
+                {
+                    btnEnterUnlockCodeIsDisabled = false;
+                    btnReturnKeyIsDisabled = false;
+                    break;
+                }
+            case (int)ControllerState.WAITING_FOR_LAUNCH_COMMAND:
+                {
+                    btnLaunchCommandIsDisabled = false;
+                    btnReturnKeyIsDisabled = false;
+                    break;
+                }
+            default: //Launch Missile
+                {
+                    btnFirstKeyIsDisabled = false;
+                    //vidLaunchIsDisabled = false;
+                    video.Play();
+                    break;
+                }
+        }
+    }
+
+}
+
+<VidazorVideo @ref="video" width="600px" height="500px" OnTimeUpdate="@(() => Console.WriteLine($"Current time is: {video.CurrentTime}"))">
+    <source src="Videos/rocket.mp4" />
+</VidazorVideo>
